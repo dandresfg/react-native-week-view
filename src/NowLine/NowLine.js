@@ -1,8 +1,11 @@
 import React from 'react';
-import { View, Animated } from 'react-native';
+import { Text, View, Animated } from 'react-native';
 import PropTypes from 'prop-types';
 
-import { minutesToYDimension, CONTENT_OFFSET } from '../utils';
+import {
+  minutesToYDimension,
+  CONTENT_OFFSET,
+} from '../utils';
 import styles from './NowLine.styles';
 
 const UPDATE_EVERY_MILLISECONDS = 60 * 1000; // 1 minute
@@ -21,14 +24,20 @@ class NowLine extends React.Component {
 
     this.state = {
       currentTranslateY: new Animated.Value(0),
-    };
+    }
 
     this.intervalCallbackId = null;
   }
 
   componentDidMount() {
     this.intervalCallbackId = setInterval(() => {
-      this.updateLinePosition(1000);
+      const newTop = getCurrentTop(this.props.hoursInDisplay);
+      Animated.timing(this.state.currentTranslateY, {
+        toValue: newTop - this.initialTop,
+        duration: 1000,
+        useNativeDriver: true,
+        isInteraction: false,
+      }).start();
     }, UPDATE_EVERY_MILLISECONDS);
   }
 
@@ -36,22 +45,6 @@ class NowLine extends React.Component {
     if (this.intervalCallbackId) {
       clearInterval(this.intervalCallbackId);
     }
-  }
-
-  componentDidUpdate(prevProps) {
-    if (prevProps.hoursInDisplay !== this.props.hoursInDisplay) {
-      this.updateLinePosition(500);
-    }
-  }
-
-  updateLinePosition = (animationDuration) => {
-    const newTop = getCurrentTop(this.props.hoursInDisplay);
-    Animated.timing(this.state.currentTranslateY, {
-      toValue: newTop - this.initialTop,
-      duration: animationDuration,
-      useNativeDriver: true,
-      isInteraction: false,
-    }).start();
   }
 
   render() {
@@ -75,8 +68,7 @@ class NowLine extends React.Component {
             {
               backgroundColor: color,
             },
-          ]}
-        />
+        ]}/>
       </Animated.View>
     );
   }

@@ -6,15 +6,14 @@ import styles from './Event.styles';
 const Event = ({
   event,
   onPress,
-  onLongPress,
   position,
   EventComponent,
   containerStyle,
 }) => {
   return (
     <TouchableOpacity
-      onPress={() => onPress && onPress(event)}
-      onLongPress={() => onLongPress && onLongPress(event)}
+      onPress={() => onPress(event)}
+      onLongPress={() => onPress(event, true)}
       style={[
         styles.item,
         position,
@@ -23,7 +22,7 @@ const Event = ({
         },
         containerStyle,
       ]}
-      disabled={!onPress && !onLongPress}
+      disabled={!onPress}
     >
       {EventComponent ? (
         <EventComponent event={event} position={position} />
@@ -52,7 +51,6 @@ const positionPropType = PropTypes.shape({
 Event.propTypes = {
   event: eventPropType.isRequired,
   onPress: PropTypes.func,
-  onLongPress: PropTypes.func,
   position: positionPropType,
   containerStyle: PropTypes.object,
   EventComponent: PropTypes.elementType,

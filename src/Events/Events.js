@@ -20,137 +20,150 @@ import {
 import styles from './Events.styles';
 
 const MINUTES_IN_HOUR = 60;
-const EVENT_HORIZONTAL_PADDING = 15;
+const EVENT_HORIZONTAL_PADDING = 5;
 const EVENTS_CONTAINER_WIDTH = CONTAINER_WIDTH - EVENT_HORIZONTAL_PADDING;
-const MIN_ITEM_WIDTH = 4;
-const ALLOW_OVERLAP_SECONDS = 2;
+const MIN_ITEM_WIDTH = 20;
+const ALLOW_OVERLAP_SECONDS = 15;
+
+const getMaxHeight = (height, event) => {
+  if(event.Duracion <= 15){
+    return 45;
+  }
+
+  return height;
+}
 
 const areEventsOverlapped = (event1EndDate, event2StartDate) => {
   const endDate = moment(event1EndDate);
-  endDate.subtract(ALLOW_OVERLAP_SECONDS, 'seconds');
+  endDate.subtract(ALLOW_OVERLAP_SECONDS, 'minutes');
   return endDate.isSameOrAfter(event2StartDate);
 };
 
-const getStyleForEvent = (event, regularItemWidth, hoursInDisplay) => {
-  const startDate = moment(event.startDate);
-  const startHours = startDate.hours();
-  const startMinutes = startDate.minutes();
-  const totalStartMinutes = startHours * MINUTES_IN_HOUR + startMinutes;
-  const top = minutesToYDimension(hoursInDisplay, totalStartMinutes);
-  const deltaMinutes = moment(event.endDate).diff(event.startDate, 'minutes');
-  const height = minutesToYDimension(hoursInDisplay, deltaMinutes);
-
-  return {
-    top: top + CONTENT_OFFSET,
-    left: 0,
-    height,
-    width: regularItemWidth,
-  };
-};
-
-const addOverlappedToArray = (baseArr, overlappedArr, itemWidth) => {
-  // Given an array of overlapped events (with style), modifies their style to overlap them
-  // and adds them to a (base) array of events.
-  if (!overlappedArr) return;
-
-  const nOverlapped = overlappedArr.length;
-  if (nOverlapped === 0) {
-    return;
-  }
-  if (nOverlapped === 1) {
-    baseArr.push(overlappedArr[0]);
-    return;
-  }
-
-  let nLanes;
-  let horizontalPadding;
-  let indexToLane;
-  if (nOverlapped === 2) {
-    nLanes = nOverlapped;
-    horizontalPadding = 3;
-    indexToLane = (index) => index;
-  } else {
-    // Distribute events in multiple lanes
-    const maxLanes = nOverlapped;
-    const latestByLane = {};
-    const laneByEvent = {};
-    overlappedArr.forEach((event, index) => {
-      for (let lane = 0; lane < maxLanes; lane += 1) {
-        const lastEvtInLaneIndex = latestByLane[lane];
-        const lastEvtInLane =
-          (lastEvtInLaneIndex || lastEvtInLaneIndex === 0) &&
-          overlappedArr[lastEvtInLaneIndex];
-        if (
-          !lastEvtInLane ||
-          !areEventsOverlapped(
-            lastEvtInLane.data.endDate,
-            event.data.startDate,
-          )
-        ) {
-          // Place in this lane
-          latestByLane[lane] = index;
-          laneByEvent[index] = lane;
-          break;
-        }
-      }
-    });
-
-    nLanes = Object.keys(latestByLane).length;
-    horizontalPadding = 2;
-    indexToLane = (index) => laneByEvent[index];
-  }
-  const dividedWidth = itemWidth / nLanes;
-  const width = Math.max(dividedWidth - horizontalPadding, MIN_ITEM_WIDTH);
-
-  overlappedArr.forEach((eventWithStyle, index) => {
-    const { data, style } = eventWithStyle;
-    baseArr.push({
-      data,
-      style: {
-        ...style,
-        width,
-        left: dividedWidth * indexToLane(index),
-      },
-    });
-  });
-};
-
-const getEventsWithPosition = (totalEvents, regularItemWidth, hoursInDisplay) => {
-  return totalEvents.map((events) => {
-    let overlappedSoFar = []; // Store events overlapped until now
-    let lastDate = null;
-    const eventsWithStyle = events.reduce((eventsAcc, event) => {
-      const style = getStyleForEvent(event, regularItemWidth, hoursInDisplay);
-      const eventWithStyle = {
-        data: event,
-        style,
-      };
-
-      if (!lastDate || areEventsOverlapped(lastDate, event.startDate)) {
-        overlappedSoFar.push(eventWithStyle);
-        const endDate = moment(event.endDate);
-        lastDate = lastDate ? moment.max(endDate, lastDate) : endDate;
-      } else {
-        addOverlappedToArray(
-          eventsAcc,
-          overlappedSoFar,
-          regularItemWidth,
-        );
-        overlappedSoFar = [eventWithStyle];
-        lastDate = moment(event.endDate);
-      }
-      return eventsAcc;
-    }, []);
-    addOverlappedToArray(
-      eventsWithStyle,
-      overlappedSoFar,
-      regularItemWidth,
-    );
-    return eventsWithStyle;
-  });
-};
-
 class Events extends PureComponent {
+  getStyleForEvent = (item) => {
+    const { hoursInDisplay } = this.props;
+
+    const startDate = moment(item.startDate);
+    const startHours = startDate.hours();
+    const startMinutes = startDate.minutes();
+    const totalStartMinutes = startHours * MINUTES_IN_HOUR + startMinutes;
+    const top = minutesToYDimension(hoursInDisplay, totalStartMinutes);
+    const deltaMinutes = moment(item.endDate).diff(item.startDate, 'minutes');
+    const height = getMaxHeight(minutesToYDimension(hoursInDisplay, deltaMinutes), item);
+    const width = this.getEventItemWidth(false);
+
+    return {
+      top: top + CONTENT_OFFSET,
+      left: 0,
+      height,
+      width,
+    };
+  };
+
+  addOverlappedToArray = (baseArr, overlappedArr, itemWidth) => {
+    // Given an array of overlapped events (with style), modifies their style to overlap them
+    // and adds them to a (base) array of events.
+    if (!overlappedArr) return;
+
+    const nOverlapped = overlappedArr.length;
+    if (nOverlapped === 0) {
+      return;
+    }
+    if (nOverlapped === 1) {
+      baseArr.push(overlappedArr[0]);
+      return;
+    }
+
+    let nLanes;
+    let horizontalPadding;
+    let indexToLane;
+    if (nOverlapped === 2) {
+      nLanes = nOverlapped;
+      horizontalPadding = 3;
+      indexToLane = (index) => index;
+    } else {
+      // Distribute events in multiple lanes
+      const maxLanes = nOverlapped;
+      const latestByLane = {};
+      const laneByEvent = {};
+      overlappedArr.forEach((event, index) => {
+        for (let lane = 0; lane < maxLanes; lane += 1) {
+          const lastEvtInLaneIndex = latestByLane[lane];
+          const lastEvtInLane =
+            (lastEvtInLaneIndex || lastEvtInLaneIndex === 0) &&
+            overlappedArr[lastEvtInLaneIndex];
+          if (
+            !lastEvtInLane ||
+            !areEventsOverlapped(
+              lastEvtInLane.data.endDate,
+              event.data.startDate,
+            )
+          ) {
+            // Place in this lane
+            latestByLane[lane] = index;
+            laneByEvent[index] = lane;
+            break;
+          }
+        }
+      });
+
+      nLanes = Object.keys(latestByLane).length;
+      horizontalPadding = 2;
+      indexToLane = (index) => laneByEvent[index];
+    }
+    const dividedWidth = itemWidth / nLanes;
+    const width = Math.max(dividedWidth - horizontalPadding, MIN_ITEM_WIDTH);
+
+    overlappedArr.forEach((eventWithStyle, index) => {
+      const { data, style } = eventWithStyle;
+      baseArr.push({
+        data,
+        style: {
+          ...style,
+          width,
+          left: dividedWidth * indexToLane(index),
+        },
+      });
+    });
+  };
+
+  getEventsWithPosition = (totalEvents) => {
+    const regularItemWidth = this.getEventItemWidth();
+
+    return totalEvents.map((events) => {
+      let overlappedSoFar = []; // Store events overlapped until now
+      let lastDate = null;
+      const eventsWithStyle = events.reduce((eventsAcc, event) => {
+        const style = this.getStyleForEvent(event);
+        const eventWithStyle = {
+          data: event,
+          style,
+        };
+
+        if (!lastDate || areEventsOverlapped(lastDate, event.startDate)) {
+          overlappedSoFar.push(eventWithStyle);
+          const endDate = moment(event.endDate);
+          lastDate = lastDate ? moment.max(endDate, lastDate) : endDate;
+        } else {
+          this.addOverlappedToArray(
+            eventsAcc,
+            overlappedSoFar,
+            regularItemWidth,
+          );
+          overlappedSoFar = [eventWithStyle];
+          lastDate = moment(event.endDate);
+        }
+        return eventsAcc;
+      }, []);
+      this.addOverlappedToArray(
+        eventsWithStyle,
+        overlappedSoFar,
+        regularItemWidth,
+      );
+      return eventsWithStyle;
+    });
+  };
+
   yToHour = (y) => {
     const { hoursInDisplay } = this.props;
     const hour = (y * hoursInDisplay) / CONTAINER_HEIGHT;
@@ -164,7 +177,7 @@ class Events extends PureComponent {
   };
 
   processEvents = memoizeOne(
-    (eventsByDate, initialDate, numberOfDays, hoursInDisplay, rightToLeft) => {
+    (eventsByDate, initialDate, numberOfDays, rightToLeft) => {
       // totalEvents stores events in each day of numberOfDays
       // example: [[event1, event2], [event3, event4], [event5]], each child array
       // is events for specific day in range
@@ -173,22 +186,14 @@ class Events extends PureComponent {
         const dateStr = date.format(DATE_STR_FORMAT);
         return eventsByDate[dateStr] || [];
       });
-
-      const regularItemWidth = this.getEventItemWidth();
-
-      const totalEventsWithPosition = getEventsWithPosition(
-        totalEvents,
-        regularItemWidth,
-        hoursInDisplay,
-      );
+      const totalEventsWithPosition = this.getEventsWithPosition(totalEvents);
       return totalEventsWithPosition;
     },
   );
 
-  onGridTouch = (event, dayIndex, longPress) => {
-    const { initialDate, onGridClick, onGridLongPress } = this.props;
-    const callback = longPress ? onGridLongPress : onGridClick;
-    if (!callback) {
+  onGridClick = (event, dayIndex) => {
+    const { initialDate, onGridClick } = this.props;
+    if (!onGridClick) {
       return;
     }
     const { locationY } = event.nativeEvent;
@@ -196,14 +201,14 @@ class Events extends PureComponent {
 
     const date = moment(initialDate).add(dayIndex, 'day').toDate();
 
-    callback(event, hour, date);
+    onGridClick(event, hour, date);
   };
 
   isToday = (dayIndex) => {
     const { initialDate } = this.props;
     const today = moment();
     return moment(initialDate).add(dayIndex, 'days').isSame(today, 'day');
-  };
+  }
 
   render() {
     const {
@@ -212,7 +217,6 @@ class Events extends PureComponent {
       numberOfDays,
       times,
       onEventPress,
-      onEventLongPress,
       eventContainerStyle,
       EventComponent,
       rightToLeft,
@@ -225,7 +229,6 @@ class Events extends PureComponent {
       eventsByDate,
       initialDate,
       numberOfDays,
-      hoursInDisplay,
       rightToLeft,
     );
 
@@ -234,10 +237,7 @@ class Events extends PureComponent {
         {times.map((time) => (
           <View
             key={time}
-            style={[
-              styles.timeRow,
-              { height: getTimeLabelHeight(hoursInDisplay, timeStep) },
-            ]}
+            style={[styles.timeRow, { height: getTimeLabelHeight(hoursInDisplay, timeStep) }]}
           >
             <View style={styles.timeLabelLine} />
           </View>
@@ -245,8 +245,7 @@ class Events extends PureComponent {
         <View style={styles.events}>
           {totalEvents.map((eventsInSection, dayIndex) => (
             <TouchableWithoutFeedback
-              onPress={(e) => this.onGridTouch(e, dayIndex, false)}
-              onLongPress={(e) => this.onGridTouch(e, dayIndex, true)}
+              onPress={(e) => this.onGridClick(e, dayIndex)}
               key={dayIndex}
             >
               <View style={styles.event}>
@@ -263,7 +262,6 @@ class Events extends PureComponent {
                     event={item.data}
                     position={item.style}
                     onPress={onEventPress}
-                    onLongPress={onEventLongPress}
                     EventComponent={EventComponent}
                     containerStyle={eventContainerStyle}
                   />
@@ -286,9 +284,7 @@ Events.propTypes = {
   timeStep: PropTypes.number.isRequired,
   times: PropTypes.arrayOf(PropTypes.string).isRequired,
   onEventPress: PropTypes.func,
-  onEventLongPress: PropTypes.func,
   onGridClick: PropTypes.func,
-  onGridLongPress: PropTypes.func,
   eventContainerStyle: PropTypes.object,
   EventComponent: PropTypes.elementType,
   rightToLeft: PropTypes.bool,
