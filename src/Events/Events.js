@@ -25,14 +25,6 @@ const EVENTS_CONTAINER_WIDTH = CONTAINER_WIDTH - EVENT_HORIZONTAL_PADDING;
 const MIN_ITEM_WIDTH = 20;
 const ALLOW_OVERLAP_SECONDS = 15;
 
-const getMaxHeight = (height, event) => {
-  if(event.Duracion <= 15){
-    return 45;
-  }
-
-  return height;
-}
-
 const areEventsOverlapped = (event1EndDate, event2StartDate) => {
   const endDate = moment(event1EndDate);
   endDate.subtract(ALLOW_OVERLAP_SECONDS, 'minutes');
@@ -49,7 +41,7 @@ class Events extends PureComponent {
     const totalStartMinutes = startHours * MINUTES_IN_HOUR + startMinutes;
     const top = minutesToYDimension(hoursInDisplay, totalStartMinutes);
     const deltaMinutes = moment(item.endDate).diff(item.startDate, 'minutes');
-    const height = getMaxHeight(minutesToYDimension(hoursInDisplay, deltaMinutes), item);
+    const height = minutesToYDimension(hoursInDisplay, deltaMinutes);
     const width = this.getEventItemWidth(false);
 
     return {

@@ -35,7 +35,7 @@ export default class WeekView extends Component {
     this.header = null;
     this.pageOffset = 2;
     this.scroll = false;
-    this.currentPageIndex = this.pageOffset;
+    this.currentPageIndex = this.pageOffset
     this.eventsGridScrollX = new Animated.Value(0);
 
     const initialDates = this.calculatePagesDates(
@@ -164,18 +164,31 @@ export default class WeekView extends Component {
     if(this.props.numberOfDays === 1){
       for (let i = 0; i < initialDates.length; i++) {
         let date = this.getDate(initialDates[i])
-        if(!date.getDay()){
-          date.setDate(date.getDate() + 1);
+
+        if(!date.getDay() && !i){
+          date.setDate(date.getDate() - 1);
           dates.push(this.formatDate(date))
+        } else if(!date.getDay()){
+          if(i > (initialDates.length / 2)){
+            date = this.getDate(initialDates[initialDates.length - 1]);
+            date.setDate(date.getDate()+1)
+            if(!date.getDay()){
+              date.setDate(date.getDate()+1)
+            }
+            dates.push(this.formatDate(date))
+          } else {
+            date = this.getDate(initialDates[0]);
+            date.setDate(date.getDate()-1)
+            if(!date.getDay()){
+              date.setDate(date.getDate()-1)
+            }
+            dates.unshift(this.formatDate(date))
+          }
         } else {
           dates.push(initialDates[i])
         }
       }
-      // No repeat monday
-      dates =  [...new Set(dates)];
-      if(dates.length !== initialDates.length){
-        this.currentPageIndex--;
-      }
+
       return dates;
     }
 
